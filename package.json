@@ -1,0 +1,22 @@
+{
+  "name": "sky888-commercial-spaces",
+  "version": "1.0.0",
+  "description": "Tenant request system for Sky Houseware (SKY888), Cotabato City",
+  "main": "server.js",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/app.test.js",
+    "create-admin": "node scripts/create-admin.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "express": "^4.22.3",
+    "helmet": "^8.3.0",
+    "multer": "^2.5.0"
+  }
+}
