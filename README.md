@@ -12,7 +12,7 @@ Built with Node.js, Express and a single SQLite file. There is no build step.
 
 ## How to run it on your computer
 
-You only need two things: **Node.js** (version 20 or newer) and this project folder.
+You only need two things: **Node.js** (version 22 or newer) and this project folder.
 
 ### Step 1: Install Node.js (once)
 
@@ -23,7 +23,7 @@ Then close and reopen your terminal and check it worked:
 node -v
 ```
 
-It should print `v20` or higher. If it says the command is not found, the install did not finish or the terminal was not reopened.
+It should print `v22` or higher (older versions will not work). If it says the command is not found, the install did not finish or the terminal was not reopened.
 
 > Mac users who use Homebrew can run `brew install node` instead.
 
@@ -117,6 +117,7 @@ npm run create-admin -- admin@sky888.local
 | Problem | Fix |
 | --- | --- |
 | **Windows PowerShell:** `npm.ps1 cannot be loaded because running scripts is disabled` | Use **Command Prompt** (Step 3) instead. Or run `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned` once in PowerShell and answer `Y`. Or type `npm.cmd install` and `npm.cmd start`. |
+| **Windows:** `npm error command failed ... node-gyp rebuild` / `find VS` / "could not find Visual Studio" | Make sure the project contains the file `.npmrc` (it comes with the repo), delete the `node_modules` folder, and run `npm install` again. If the file is missing, run `npm install --ignore-scripts` instead. You do **not** need to install Visual Studio. |
 | `npm: command not found` (Mac) or `'npm' is not recognized` (Windows) | Node.js is not installed, or the terminal was opened before installing. Do Step 1, then open a new terminal. |
 | `npm.cmd: command not found` on Mac | `npm.cmd` is Windows only. On a Mac just use `npm`. |
 | `EADDRINUSE` / "address already in use" | An old copy is still running. Stop it with `Ctrl + C` in its terminal, or run on another port: `PORT=3001 npm start` (Mac) / `set PORT=3001` then `npm start` (Windows). |
