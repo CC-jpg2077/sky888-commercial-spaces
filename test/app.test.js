@@ -65,30 +65,92 @@ test('the homepage and admin page are served', async () => {
 });
 
 test('request form: validation errors name each field', async () => {
-  const { status, data } = await call('POST', '/api/requests', { body: { business_name: ' ' }, auth: false });
+  const headers = { 'X-Forwarded-For': '10.0.0.1' };
+  const { status, data } = await call('POST', '/api/requests', { body: { business_name: ' ' }, headers, auth: false });
   assert.equal(status, 422);
   for (const k of ['business_name', 'business_type', 'contact_name', 'phone', 'email', 'space_id']) assert.ok(data.fields[k], k);
-  const bad = await call('POST', '/api/requests', { body: goodRequest(1, { email: 'nope', phone: 'abc' }), auth: false });
+  const bad = await call('POST', '/api/requests', { body: goodRequest(1, { email: 'nope', phone: 'abc' }), headers, auth: false });
   assert.equal(bad.status, 422);
   assert.ok(bad.data.fields.email && bad.data.fields.phone);
 });
 
 test('request form: reserved or unknown spaces are refused', async () => {
-  assert.equal((await call('POST', '/api/requests', { body: goodRequest(3), auth: false })).status, 422);
-  assert.equal((await call('POST', '/api/requests', { body: goodRequest(999), auth: false })).status, 422);
+  const headers = { 'X-Forwarded-For': '10.0.0.2' };
+  assert.equal((await call('POST', '/api/requests', { body: goodRequest(3), headers, auth: false })).status, 422);
+  assert.equal((await call('POST', '/api/requests', { body: goodRequest(999), headers, auth: false })).status, 422);
 });
 
 test('request form: honeypot is silently ignored', async () => {
-  const r = await call('POST', '/api/requests', { body: goodRequest(1, { website: 'http://spam' }), auth: false });
+  const r = await call('POST', '/api/requests', {
+    body: goodRequest(1, { website: 'http://spam' }),
+    headers: { 'X-Forwarded-For': '10.0.0.5' },
+    auth: false
+  });
   assert.equal(r.status, 201);
   assert.equal(r.data.reference_no, 'SKY-0000');
 });
 
+test('request form: invalid attempts consume the spam quota', async () => {
+  const headers = { 'X-Forwarded-For': '10.0.0.6' };
+  for (let i = 0; i < 3; i++) {
+    assert.equal((await call('POST', '/api/requests', { body: {}, headers, auth: false })).status, 422);
+  }
+  const blocked = await call('POST', '/api/requests', { body: {}, headers, auth: false });
+  assert.equal(blocked.status, 429);
+  assert.match(blocked.data.error, /Too many requests/);
+  assert.ok(Number(blocked.res.headers.get('retry-after')) > 0);
+});
+
+test('request form: retry delay covers the longest exhausted window', async () => {
+  const headers = { 'X-Forwarded-For': '10.0.0.61' };
+  const realNow = Date.now;
+  let now = realNow();
+  Date.now = () => now;
+  try {
+    for (let i = 0; i < 3; i++) {
+      assert.equal((await call('POST', '/api/requests', { body: {}, headers, auth: false })).status, 422);
+    }
+    now += 10 * 60 * 1000 + 1000;
+    for (let i = 0; i < 2; i++) {
+      assert.equal((await call('POST', '/api/requests', { body: {}, headers, auth: false })).status, 422);
+    }
+    const blocked = await call('POST', '/api/requests', { body: {}, headers, auth: false });
+    assert.equal(blocked.status, 429);
+    assert.ok(Number(blocked.res.headers.get('retry-after')) > 2800);
+  } finally {
+    Date.now = realNow;
+  }
+});
+
+test('request form: honeypot attempts cannot bypass the spam quota', async () => {
+  const headers = { 'X-Forwarded-For': '10.0.0.7' };
+  for (let i = 0; i < 3; i++) {
+    assert.equal((await call('POST', '/api/requests', {
+      body: goodRequest(1, { website: 'http://spam' }),
+      headers,
+      auth: false
+    })).status, 201);
+  }
+  assert.equal((await call('POST', '/api/requests', {
+    body: goodRequest(1, { website: 'http://spam' }),
+    headers,
+    auth: false
+  })).status, 429);
+});
+
 test('request form: a valid request gets a reference number', async () => {
-  const r = await call('POST', '/api/requests', { body: goodRequest(1), auth: false });
+  const r = await call('POST', '/api/requests', {
+    body: goodRequest(1),
+    headers: { 'X-Forwarded-For': '10.0.0.8' },
+    auth: false
+  });
   assert.equal(r.status, 201);
   assert.match(r.data.reference_no, /^SKY-\d{4}$/);
-  const r2 = await call('POST', '/api/requests', { body: goodRequest(2, { business_name: 'Cruz Tutorial Center' }), auth: false });
+  const r2 = await call('POST', '/api/requests', {
+    body: goodRequest(2, { business_name: 'Cruz Tutorial Center' }),
+    headers: { 'X-Forwarded-For': '10.0.0.9' },
+    auth: false
+  });
   assert.notEqual(r.data.reference_no, r2.data.reference_no);
 });
 
@@ -151,7 +213,11 @@ test('accepting a request records history and updates the space', async () => {
   assert.equal((await call('POST', `/api/admin/requests/${id}/decision`, { body: { decision: 'declined' } })).status, 409);
 
   // Unit 1 is now reserved, so visitors can no longer request it.
-  assert.equal((await call('POST', '/api/requests', { body: goodRequest(1), auth: false })).status, 422);
+  assert.equal((await call('POST', '/api/requests', {
+    body: goodRequest(1),
+    headers: { 'X-Forwarded-For': '10.0.0.10' },
+    auth: false
+  })).status, 422);
   const site = (await call('GET', '/api/site', { auth: false })).data;
   assert.equal(site.spaces[0].status, 'reserved');
 });
@@ -251,10 +317,18 @@ test('logout ends the session', async () => {
 });
 
 test('request form: target start date is optional but must be a real, non-past date', async () => {
-  const none = await call('POST', '/api/requests', { body: goodRequest(1, { target_start_date: '' }), auth: false });
+  const none = await call('POST', '/api/requests', {
+    body: goodRequest(1, { target_start_date: '' }),
+    headers: { 'X-Forwarded-For': '10.0.0.11' },
+    auth: false
+  });
   assert.ok(!none.data.fields || !none.data.fields.target_start_date, 'empty date is accepted');
-  for (const bad of ['2020-01-01', '2099-02-31', 'next week']) {
-    const r = await call('POST', '/api/requests', { body: goodRequest(1, { target_start_date: bad }), auth: false });
+  for (const [index, bad] of ['2020-01-01', '2099-02-31', 'next week'].entries()) {
+    const r = await call('POST', '/api/requests', {
+      body: goodRequest(1, { target_start_date: bad }),
+      headers: { 'X-Forwarded-For': `10.0.0.${12 + index}` },
+      auth: false
+    });
     assert.equal(r.status, 422, bad);
     assert.ok(r.data.fields.target_start_date, bad);
   }
