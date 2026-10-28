@@ -293,6 +293,15 @@ test('settings: contact details appear on the public site', async () => {
   assert.equal(priced.monthly_rate, 5000);
 });
 
+test('public contact rendering uses plain text links', () => {
+  const siteJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'site.js'), 'utf8');
+  assert.match(siteJs, /line\('Phone', st\.contact_phone\);/);
+  assert.match(siteJs, /line\('Email', st\.contact_email\);/);
+  assert.doesNotMatch(siteJs, /tel:/);
+  assert.doesNotMatch(siteJs, /mailto:/);
+  assert.match(siteJs, /dir\.href = st\.directions_url \|\|/);
+});
+
 test('bad ids and cross-site posts are handled safely', async () => {
   assert.equal((await call('GET', '/api/admin/requests/abc')).status, 404);
   assert.equal((await call('GET', '/api/admin/spaces/abc')).status, 404);

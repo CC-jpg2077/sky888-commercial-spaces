@@ -107,8 +107,8 @@
         lines.appendChild(document.createTextNode(value || 'to be announced'));
       }
     }
-    line('Phone', st.contact_phone, st.contact_phone ? 'tel:' + st.contact_phone.replace(/[^0-9+]/g, '') : '');
-    line('Email', st.contact_email, st.contact_email ? 'mailto:' + st.contact_email : '');
+    line('Phone', st.contact_phone);
+    line('Email', st.contact_email);
     if (st.office_hours) {
       lines.appendChild(document.createElement('br'));
       lines.appendChild(document.createTextNode(st.office_hours));
