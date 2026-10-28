@@ -162,9 +162,8 @@
     if (!v.business_type) e.business_type = 'Enter your type of business.';
     if (v.target_start_date && v.target_start_date < today()) e.target_start_date = 'Choose today or a later date.';
     if (!v.space_id) e.space_id = 'Choose a space.';
-    var digits = v.phone.replace(/\D/g, '');
     if (!v.phone) e.phone = 'Enter a phone number.';
-    else if (!/^[0-9+()\-.\s]+$/.test(v.phone) || digits.length < 7 || digits.length > 15) e.phone = 'Enter a valid phone number.';
+    else if (!SkyPhone.isValid(v.phone)) e.phone = 'Enter a valid phone number.';
     if (!v.email) e.email = 'Enter an email address.';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.email)) e.email = 'Enter a valid email address.';
     return e;
@@ -177,6 +176,8 @@
     });
     return out;
   }
+
+  SkyPhone.bind($('phone'));
 
   function showErrors(errs) {
     var firstBad = null;

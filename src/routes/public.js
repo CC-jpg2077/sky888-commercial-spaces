@@ -2,7 +2,7 @@
 
 const express = require('express');
 const { getSettings } = require('../db');
-const { field, isEmail, isPhone, createLimiter, httpError } = require('../util');
+const { field, isEmail, normalizePhone, createLimiter, httpError } = require('../util');
 
 // A real calendar date in YYYY-MM-DD form that is not before today
 // (yesterday is allowed so time zones never reject a valid "today").
@@ -96,10 +96,11 @@ module.exports = function publicRoutes(db) {
       business_name: biz, business_type: type, business_description: desc, target_start_date: start,
       contact_name: contact, phone, email, notes
     })) if (f.err) fields[k] = f.err;
+    const normalizedPhone = normalizePhone(phone.v);
     if (!fields.target_start_date && start.v && !isFutureDate(start.v)) {
       fields.target_start_date = 'Choose today or a later date.';
     }
-    if (!fields.phone && !isPhone(phone.v)) fields.phone = 'Enter a valid phone number.';
+    if (!fields.phone && !normalizedPhone) fields.phone = 'Enter a valid phone number.';
     if (!fields.email && !isEmail(email.v)) fields.email = 'Enter a valid email address.';
 
     const spaceId = Number(body.space_id);
@@ -118,7 +119,7 @@ module.exports = function publicRoutes(db) {
         `INSERT INTO requests (space_id, space_name, business_name, business_type, business_description,
                                target_start_date, contact_name, phone, email, notes)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(space.id, space.name, biz.v, type.v, desc.v, start.v || null, contact.v, phone.v, email.v, notes.v);
+      ).run(space.id, space.name, biz.v, type.v, desc.v, start.v || null, contact.v, normalizedPhone, email.v, notes.v);
       const id = Number(info.lastInsertRowid);
       const ref = `SKY-${1000 + id}`;
       db.prepare('UPDATE requests SET reference_no = ? WHERE id = ?').run(ref, id);

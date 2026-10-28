@@ -4,14 +4,16 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
 const { openDb, seedSampleSpaces } = require('../src/db');
 const { createAdmin } = require('../src/auth');
 const { createApp } = require('../src/app');
+const { normalizePhone, isPhone } = require('../src/util');
 
 const TEMP_PW = 'Temporary123';
 const NEW_PW = 'BetterPass2026';
 
-let server, base, cookie = '';
+let server, base, cookie = '', db;
 
 function call(method, url, { body, headers = {}, auth = true, form } = {}) {
   const h = { ...headers };
@@ -39,8 +41,20 @@ const goodRequest = (space_id, over = {}) => ({
   ...over
 });
 
+test('phone normalization formats strict Philippine mobile numbers', () => {
+  assert.equal(normalizePhone('0917 123 4567'), '0917 123 4567');
+  assert.equal(normalizePhone('0917-123-4567'), '0917 123 4567');
+  assert.equal(normalizePhone('09171234567'), '0917 123 4567');
+  assert.equal(normalizePhone('0917 (123) 4567'), '0917 123 4567');
+  assert.equal(normalizePhone('091712345678'), null);
+  assert.equal(normalizePhone('0817 123 4567'), null);
+  assert.equal(normalizePhone('0917 123 ABC7'), null);
+  assert.equal(isPhone('0917 123 4567'), true);
+  assert.equal(isPhone('091712345678'), false);
+});
+
 test.before(async () => {
-  const db = openDb(':memory:');
+  db = openDb(':memory:');
   seedSampleSpaces(db);
   createAdmin(db, { email: 'admin@test.local', name: 'Test Admin', password: TEMP_PW, mustChange: true });
   server = createApp(db).listen(0);
@@ -140,18 +154,31 @@ test('request form: honeypot attempts cannot bypass the spam quota', async () =>
 
 test('request form: a valid request gets a reference number', async () => {
   const r = await call('POST', '/api/requests', {
-    body: goodRequest(1),
+    body: goodRequest(1, { phone: '09171234567' }),
     headers: { 'X-Forwarded-For': '10.0.0.8' },
     auth: false
   });
   assert.equal(r.status, 201);
   assert.match(r.data.reference_no, /^SKY-\d{4}$/);
+  assert.equal(db.prepare('SELECT phone FROM requests WHERE reference_no = ?').get(r.data.reference_no).phone, '0917 123 4567');
   const r2 = await call('POST', '/api/requests', {
     body: goodRequest(2, { business_name: 'Cruz Tutorial Center' }),
     headers: { 'X-Forwarded-For': '10.0.0.9' },
     auth: false
   });
   assert.notEqual(r.data.reference_no, r2.data.reference_no);
+});
+
+test('request form: phone rejects over-limit and invalid characters', async () => {
+  for (const [phone, ip] of [['091712345678', '10.0.0.81'], ['0917 123 ABC7', '10.0.0.82']]) {
+    const r = await call('POST', '/api/requests', {
+      body: goodRequest(1, { phone }),
+      headers: { 'X-Forwarded-For': ip },
+      auth: false
+    });
+    assert.equal(r.status, 422);
+    assert.equal(r.data.fields.phone, 'Enter a valid phone number.');
+  }
 });
 
 test('admin API needs a login', async () => {
@@ -280,8 +307,10 @@ test('photos: upload, serve, reject non-images, delete', async () => {
 test('settings: contact details appear on the public site', async () => {
   assert.equal((await call('PUT', '/api/admin/settings', { body: { address: 'A', contact_email: 'bad' } })).status, 422);
   assert.equal((await call('PUT', '/api/admin/settings', { body: { address: 'A', directions_url: 'javascript:alert(1)' } })).status, 422);
+  assert.equal((await call('PUT', '/api/admin/settings', { body: { address: 'A', contact_phone: '091712345678' } })).status, 422);
+  assert.equal((await call('PUT', '/api/admin/settings', { body: { address: 'A', contact_phone: '0817 123 4567' } })).status, 422);
   const ok = await call('PUT', '/api/admin/settings', {
-    body: { address: 'Don Rufino Alonzo Sr. St., Cotabato City', contact_phone: '0917 000 0000', contact_email: 'hello@example.com', office_hours: 'Mon-Sat 8-5', directions_url: 'https://maps.app.goo.gl/x', show_rates: true }
+    body: { address: 'Don Rufino Alonzo Sr. St., Cotabato City', contact_phone: '0917-000-0000', contact_email: 'hello@example.com', office_hours: 'Mon-Sat 8-5', directions_url: 'https://maps.app.goo.gl/x', show_rates: true }
   });
   assert.equal(ok.status, 200);
   const pub = (await call('GET', '/api/site', { auth: false })).data;
@@ -295,11 +324,33 @@ test('settings: contact details appear on the public site', async () => {
 
 test('public contact rendering uses plain text links', () => {
   const siteJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'site.js'), 'utf8');
+  const adminJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin', 'admin.js'), 'utf8');
   assert.match(siteJs, /line\('Phone', st\.contact_phone\);/);
   assert.match(siteJs, /line\('Email', st\.contact_email\);/);
   assert.doesNotMatch(siteJs, /tel:/);
   assert.doesNotMatch(siteJs, /mailto:/);
   assert.match(siteJs, /dir\.href = st\.directions_url \|\|/);
+  assert.match(adminJs, /href: 'tel:' \+ r\.phone\.replace/);
+  assert.match(adminJs, /href: 'mailto:' \+ r\.email/);
+});
+
+test('phone field UX uses shared formatting and strict limits', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const adminHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin', 'index.html'), 'utf8');
+  const siteJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'site.js'), 'utf8');
+  const adminJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin', 'admin.js'), 'utf8');
+  const phoneJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'phone.js'), 'utf8');
+  const phoneContext = { window: {} };
+  vm.runInNewContext(phoneJs, phoneContext);
+  assert.match(indexHtml, /09XX XXX XXXX/);
+  assert.match(indexHtml, /Maximum 11 digits/);
+  assert.match(adminJs, /Maximum 11 digits/);
+  assert.match(indexHtml, /\/js\/phone\.js/);
+  assert.match(adminHtml, /\/js\/phone\.js/);
+  assert.match(siteJs, /SkyPhone\./);
+  assert.match(adminJs, /SkyPhone\./);
+  assert.match(phoneJs, /09\\d\{9\}/);
+  assert.equal(phoneContext.window.SkyPhone.normalize('091712345678'), null);
 });
 
 test('bad ids and cross-site posts are handled safely', async () => {

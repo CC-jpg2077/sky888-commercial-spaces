@@ -16,10 +16,15 @@ function isEmail(v) {
   return v.length <= 254 && EMAIL_RE.test(v);
 }
 
-function isPhone(v) {
-  if (!/^[0-9+()\-.\s]+$/.test(v)) return false;
+function normalizePhone(v) {
+  if (typeof v !== 'string' || !/^[0-9+()\-.\s]+$/.test(v)) return null;
   const digits = v.replace(/\D/g, '');
-  return digits.length >= 7 && digits.length <= 15;
+  if (!/^09\d{9}$/.test(digits)) return null;
+  return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+}
+
+function isPhone(v) {
+  return normalizePhone(v) !== null;
 }
 
 // Optional positive number; empty string or null means "not set".
@@ -82,4 +87,4 @@ function httpError(status, message, extra) {
   return e;
 }
 
-module.exports = { field, isEmail, isPhone, optionalNumber, optionalInt, createLimiter, httpError };
+module.exports = { field, isEmail, normalizePhone, isPhone, optionalNumber, optionalInt, createLimiter, httpError };
