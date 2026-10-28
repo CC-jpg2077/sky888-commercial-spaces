@@ -17,7 +17,9 @@ const PHOTO_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 module.exports = function publicRoutes(db) {
   const router = express.Router();
-  // Five requests per hour per visitor is plenty for real use and slows spam.
+  // Limit both bursts and sustained submissions. Attempts are counted before
+  // validation so invalid payloads and honeypot traffic cannot bypass limits.
+  const burstLimiter = createLimiter({ max: 3, windowMs: 10 * 60 * 1000 });
   const submitLimiter = createLimiter({ max: 5, windowMs: 60 * 60 * 1000 });
 
   // Everything the public page needs in one call.
@@ -64,15 +66,21 @@ module.exports = function publicRoutes(db) {
   router.post('/requests', (req, res) => {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
 
+    const limits = [burstLimiter, submitLimiter].map((limiter) => limiter.check(req.ip));
+    const failed = limits.filter((result) => !result.ok);
+    const limit = failed.length ? failed.reduce((longest, result) => (
+      result.retryAfter > longest.retryAfter ? result : longest
+    )) : null;
+    if (limit) {
+      res.set('Retry-After', String(limit.retryAfter));
+      throw httpError(429, 'Too many requests from this device. Please try again later.');
+    }
+    burstLimiter.hit(req.ip);
+    submitLimiter.hit(req.ip);
+
     // Hidden field that real visitors never fill in. Pretend it worked.
     if (typeof body.website === 'string' && body.website.trim() !== '') {
       return res.status(201).json({ reference_no: 'SKY-0000' });
-    }
-
-    const limit = submitLimiter.check(req.ip);
-    if (!limit.ok) {
-      res.set('Retry-After', String(limit.retryAfter));
-      throw httpError(429, 'Too many requests from this device. Please try again later.');
     }
 
     const fields = {};
@@ -119,7 +127,6 @@ module.exports = function publicRoutes(db) {
     });
 
     const reference_no = insert();
-    submitLimiter.hit(req.ip);
     res.status(201).json({ reference_no });
   });
 
