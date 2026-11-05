@@ -17,7 +17,7 @@
   --font: 'Lexend', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; font-family: var(--font); font-weight: 300; font-size: 15px; line-height: 1.55; color: var(--ink); background: var(--bg); -webkit-font-smoothing: antialiased; }
+body { margin: 0; min-width: 0; overflow-x: hidden; font-family: var(--font); font-weight: 300; font-size: 15px; line-height: 1.55; color: var(--ink); background: var(--bg); -webkit-font-smoothing: antialiased; }
 h1, h2, h3 { font-weight: 500; margin: 0; letter-spacing: -0.01em; line-height: 1.2; }
 h1 { font-size: 28px; } h2 { font-size: 18px; } h3 { font-size: 15px; }
 p { margin: 0; }
@@ -29,7 +29,7 @@ a { color: var(--accent); }
 
 /* Layout */
 .topbar { background: var(--night); color: #fff; }
-.topbar__inner { max-width: 1160px; margin: 0 auto; padding: 10px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 28px; }
+.topbar__inner { width: 100%; max-width: 1160px; min-width: 0; margin: 0 auto; padding: 10px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 28px; }
 .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff; }
 .brand img { width: 40px; height: 40px; background: #fff; object-fit: contain; }
 .brand b { font-weight: 500; display: block; line-height: 1.2; }
@@ -39,7 +39,7 @@ a { color: var(--accent); }
 .tabs a:hover { color: #fff; }
 .tabs a[aria-current="page"] { color: #fff; border-bottom-color: var(--gold); }
 .who { display: flex; align-items: center; gap: 14px; font-size: 13px; color: #b9c6da; }
-.main { max-width: 1160px; margin: 0 auto; padding: 32px 24px 64px; }
+.main { width: 100%; max-width: 1160px; min-width: 0; margin: 0 auto; padding: 32px 24px 64px; }
 .page-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; margin-bottom: 24px; }
 .back { display: inline-block; margin-bottom: 8px; font-size: 14px; }
 
@@ -91,7 +91,7 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); ou
 .toolbar { display: flex; flex-wrap: wrap; gap: 14px; align-items: end; margin-bottom: 16px; }
 .toolbar > div:first-child { flex: 1 1 260px; }
 .toolbar select { min-width: 170px; }
-.table-wrap { overflow-x: auto; }
+.table-wrap { min-width: 0; max-width: 100%; overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; min-width: 640px; }
 th { text-align: left; font-size: 11px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 10px 12px; border-bottom: 2px solid var(--ink); }
 td { padding: 13px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
@@ -130,6 +130,9 @@ ol.timeline .t { color: var(--muted); font-size: 13px; }
 .toast.bad { background: var(--danger); }
 
 @media (max-width: 860px) {
+  .topbar__inner { padding-left: 20px; padding-right: 20px; gap: 8px 16px; }
+  .tabs { order: 3; width: 100%; margin-right: 0; }
+  .who { flex-wrap: wrap; }
   .grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid--2, .row3 { grid-template-columns: minmax(0, 1fr); }
   .space-row { grid-template-columns: 72px minmax(0, 1fr); }
@@ -140,5 +143,20 @@ ol.timeline .t { color: var(--muted); font-size: 13px; }
   .row2, dl.kv { grid-template-columns: minmax(0, 1fr); }
   .main { padding: 24px 16px 56px; }
   .topbar__inner { padding: 10px 16px; }
+  .brand { min-width: 0; }
+  .brand b, .brand span { overflow-wrap: anywhere; }
+  .tabs { gap: 0; justify-content: space-between; }
+  .tabs a { padding-left: 8px; padding-right: 8px; }
+  .who { gap: 8px; font-size: 12px; }
+  .page-head { align-items: stretch; }
+  .page-head .btn, .actions .btn { width: 100%; }
+  .card { padding: 18px 16px; }
+  .grid--4 { grid-template-columns: minmax(0, 1fr); }
+  .toolbar > div, .toolbar select { width: 100%; min-width: 0; }
+  .space-row { grid-template-columns: 56px minmax(0, 1fr); gap: 12px; }
+  .space-row img, .space-row .thumb { width: 56px; height: 48px; }
+  .space-row select, .space-row > :nth-child(n+3) { grid-column: 2; width: 100%; }
+  .login { padding: 16px; }
+  .login__card { padding: 28px 20px; }
 }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
