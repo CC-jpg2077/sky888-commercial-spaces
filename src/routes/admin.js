@@ -8,7 +8,7 @@ const {
   createSession, destroySession, setSessionCookie, clearSessionCookie,
   requireAdmin, COOKIE_NAME
 } = require('../auth');
-const { field, isEmail, optionalNumber, optionalInt, createLimiter, httpError } = require('../util');
+const { field, isEmail, normalizePhone, optionalNumber, optionalInt, createLimiter, httpError } = require('../util');
 
 const SPACE_STATUSES = ['available', 'reserved', 'occupied'];
 const REQUEST_STATUSES = ['pending', 'accepted', 'declined'];
@@ -280,11 +280,13 @@ module.exports = function adminRoutes(db) {
     const url = field(b.directions_url, 'Directions link', { max: 500 });
     const err = [address, phone, email, hours, url].find((f) => f.err);
     if (err) throw httpError(422, err.err);
+    const normalizedPhone = phone.v ? normalizePhone(phone.v) : '';
+    if (phone.v && !normalizedPhone) throw httpError(422, 'Enter a valid phone number.');
     if (email.v && !isEmail(email.v)) throw httpError(422, 'Enter a valid email address.');
     if (url.v && !/^https:\/\/[^\s]+$/i.test(url.v)) throw httpError(422, 'The directions link must start with https://');
     setSettings(db, {
       address: address.v,
-      contact_phone: phone.v,
+      contact_phone: normalizedPhone,
       contact_email: email.v,
       office_hours: hours.v,
       directions_url: url.v,

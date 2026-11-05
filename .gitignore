@@ -5,3 +5,4 @@ data/*.db-wal
 .env
 .DS_Store
 Thumbs.db
+docs/superpowers/

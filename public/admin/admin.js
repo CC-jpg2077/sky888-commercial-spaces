@@ -378,7 +378,7 @@
       var s = d.settings;
       var err = h('p', { class: 'error', role: 'alert' });
       var address = h('input', { id: 'a', type: 'text', maxlength: '200', value: s.address, required: true });
-      var phone = h('input', { id: 'p', type: 'text', maxlength: '60', value: s.contact_phone, placeholder: '09XX XXX XXXX' });
+      var phone = h('input', { id: 'p', type: 'text', maxlength: '13', value: s.contact_phone, placeholder: '09XX XXX XXXX' });
       var email = h('input', { id: 'e', type: 'email', maxlength: '254', value: s.contact_email });
       var hours = h('textarea', { id: 'h', maxlength: '200', value: s.office_hours, placeholder: 'Mon–Sat, 8:00 AM – 5:00 PM' });
       var url = h('input', { id: 'u', type: 'url', maxlength: '500', value: s.directions_url, placeholder: 'https://maps.app.goo.gl/…' });
@@ -395,11 +395,12 @@
         }
       }, err,
         field('Address', address, null, 'a'),
-        h('div', { class: 'row2' }, field('Contact phone', phone, 'Hidden on the public site while empty.', 'p'), field('Contact email', email, 'Hidden on the public site while empty.', 'e')),
+        h('div', { class: 'row2' }, field('Contact phone', phone, '', 'p'), field('Contact email', email, '', 'e')),
         field('Office hours', hours, 'Optional.', 'h'),
         field('Directions link', url, 'Optional. A Google Maps share link. If empty, a search for the address is used.', 'u'),
         h('div', { class: 'field check' }, rates, h('label', { for: 'rates' }, 'Show monthly rates on the public site')),
         save)));
+      SkyPhone.bind(phone);
     });
   }
 
