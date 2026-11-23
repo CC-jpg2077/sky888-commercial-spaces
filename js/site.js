@@ -5,248 +5,170 @@
   var ARROW = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>';
   var INFO = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>';
 
-  var $ = function (id) { return document.getElementById(id); };
-  var form = $('request-form');
-  var select = $('space_id');
-  var FIELDS = ['contact_name', 'business_name', 'business_type', 'phone', 'email', 'target_start_date', 'space_id'];
-
-  function el(tag, cls, text) {
-    var n = document.createElement(tag);
-    if (cls) n.className = cls;
-    if (text !== undefined) n.textContent = text;
-    return n;
+  function photoFor(unit) {
+    return unit && Array.isArray(unit.photos) && unit.photos[0] ? unit.photos[0] : '/img/building.png';
   }
 
-  function money(n) {
-    return '₱' + Number(n).toLocaleString('en-PH', { maximumFractionDigits: 0 });
+  function isAvailable(unit) {
+    return !!unit && unit.status === 'available';
   }
 
-  function metaLine(s) {
+  function facebookConfigured(url) {
+    if (!url) return false;
+    var value = String(url).trim();
+    if (!value || value.toUpperCase() === 'LINK_TO_BE_ADDED') return false;
+    return /^https:\/\/(www\.)?facebook\.com\//i.test(value);
+  }
+
+  function money(value) {
+    return '₱' + Number(value).toLocaleString('en-PH', { maximumFractionDigits: 0 });
+  }
+
+  function metaLine(unit) {
     var parts = [];
-    if (s.floor !== null && s.floor !== undefined) parts.push(s.floor === 0 ? 'Ground floor' : 'Floor ' + s.floor);
-    if (s.size_sqm) parts.push(s.size_sqm + ' sqm');
-    if (s.monthly_rate) parts.push(money(s.monthly_rate) + ' / month');
+    if (unit.floor !== null && unit.floor !== undefined) {
+      parts.push(unit.floor === 0 ? 'Ground floor' : 'Floor ' + unit.floor);
+    }
+    if (unit.size_sqm) parts.push(unit.size_sqm + ' sqm');
+    if (unit.monthly_rate) parts.push(money(unit.monthly_rate) + ' / month');
     return parts.join(' · ');
   }
 
-  function renderSpaces(spaces) {
+  window.Sky888Site = {
+    photoFor: photoFor,
+    isAvailable: isAvailable,
+    facebookConfigured: facebookConfigured,
+    metaLine: metaLine
+  };
+
+  if (typeof document === 'undefined') return;
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function renderSpaces(units) {
     var box = $('cards');
+    if (!box) return;
     box.replaceChildren();
-    if (!spaces.length) {
+    if (!Array.isArray(units) || !units.length) {
       box.appendChild(el('p', 'muted', 'No spaces are listed yet. Please check back soon.'));
       return;
     }
-    spaces.forEach(function (s) {
-      var open = s.status === 'available';
+
+    units.forEach(function (unit) {
+      var open = isAvailable(unit);
       var card = el(open ? 'a' : 'div', 'card' + (open ? '' : ' card--closed'));
       if (open) {
         card.href = '#request';
-        card.dataset.spaceId = String(s.id);
       }
-      var img = el('img', 'card__img');
-      img.src = s.photos.length ? '/api/photos/' + s.photos[0] : '/img/building.png';
-      img.alt = s.name + ' at SKY888';
-      img.loading = 'lazy';
-      card.appendChild(img);
+
+      var image = el('img', 'card__img');
+      image.src = photoFor(unit);
+      image.alt = unit.name + ' at SKY888';
+      image.loading = 'lazy';
+      card.appendChild(image);
 
       var body = el('div', 'card__body');
-      var top = el('div', 'card__name', s.name);
-      body.appendChild(top);
-      var meta = metaLine(s);
+      body.appendChild(el('div', 'card__name', unit.name));
+      var meta = metaLine(unit);
       if (meta) body.appendChild(el('p', 'card__meta', meta));
+      if (unit.description) body.appendChild(el('p', 'card__meta', unit.description));
 
       var row = el('div', 'card__row');
       if (open) {
         row.appendChild(el('span', 'card__cta', 'Request this space'));
         var arrow = el('span');
-        arrow.innerHTML = ARROW; // constant markup, no user data
+        arrow.innerHTML = ARROW;
         row.appendChild(arrow);
-        row.style.marginTop = '6px';
       } else {
-        row.appendChild(el('span', 'card__status', STATUS_LABEL[s.status] || 'Not available'));
+        row.appendChild(el('span', 'card__status', STATUS_LABEL[unit.status] || 'Not available'));
         var info = el('span');
         info.innerHTML = INFO;
         row.appendChild(info);
-        row.style.marginTop = '6px';
       }
+      row.style.marginTop = '6px';
       body.appendChild(row);
       card.appendChild(body);
       box.appendChild(card);
     });
   }
 
-  function renderSelect(spaces, keepValue) {
-    var open = spaces.filter(function (s) { return s.status === 'available'; });
-    select.replaceChildren();
-    var first = el('option', '', open.length ? 'Select a space' : 'No spaces are open right now');
-    first.value = '';
-    select.appendChild(first);
-    open.forEach(function (s) {
-      var o = el('option', '', s.name);
-      o.value = String(s.id);
-      select.appendChild(o);
-    });
-    if (keepValue && open.some(function (s) { return String(s.id) === keepValue; })) select.value = keepValue;
-  }
+  function renderSettings(settings) {
+    var address = settings.address || 'Don Rufino Alonzo Sr. St., Brgy. Poblacion 5, Cotabato City 9600';
+    var addressNode = $('address');
+    if (addressNode) addressNode.textContent = address;
 
-  function renderSettings(st) {
-    $('address').textContent = st.address;
-    var dir = $('directions');
-    dir.href = st.directions_url || ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(st.address));
+    var directions = $('directions');
+    if (directions) {
+      directions.href = settings.directionsUrl ||
+        'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(address);
+    }
 
     var lines = $('contact-lines');
-    lines.replaceChildren();
-    function line(label, value, href) {
-      if (lines.childNodes.length) lines.appendChild(document.createElement('br'));
-      lines.appendChild(document.createTextNode(label + ': '));
-      if (value && href) {
-        var a = el('a', '', value);
-        a.href = href;
-        lines.appendChild(a);
-      } else {
-        lines.appendChild(document.createTextNode(value || 'to be announced'));
+    if (lines) {
+      lines.replaceChildren();
+      function line(label, value) {
+        if (lines.childNodes.length) lines.appendChild(document.createElement('br'));
+        lines.appendChild(document.createTextNode(label + ': ' + (value || 'to be announced')));
+      }
+      line('Phone', settings.contactPhone);
+      line('Email', settings.contactEmail);
+      if (settings.officeHours) {
+        lines.appendChild(document.createElement('br'));
+        lines.appendChild(document.createTextNode(settings.officeHours));
       }
     }
-    line('Phone', st.contact_phone);
-    line('Email', st.contact_email);
-    if (st.office_hours) {
-      lines.appendChild(document.createElement('br'));
-      lines.appendChild(document.createTextNode(st.office_hours));
+
+    var facebookStatus = $('facebook-status');
+    var facebookLink = $('facebook-link');
+    if (facebookStatus && facebookLink) {
+      if (facebookConfigured(settings.facebookUrl)) {
+        facebookStatus.textContent = 'Open the SKY888 Facebook Page to discuss available spaces.';
+        facebookLink.href = settings.facebookUrl;
+        facebookLink.target = '_blank';
+        facebookLink.rel = 'noopener';
+        facebookLink.removeAttribute('aria-disabled');
+        facebookLink.classList.remove('is-disabled');
+      } else {
+        facebookStatus.textContent = 'The Facebook Page link will be added when it is available.';
+        facebookLink.href = '#';
+        facebookLink.removeAttribute('target');
+        facebookLink.removeAttribute('rel');
+        facebookLink.setAttribute('aria-disabled', 'true');
+        facebookLink.classList.add('is-disabled');
+      }
     }
   }
 
-  function loadSite(keepValue) {
-    return fetch('/api/site', { headers: { Accept: 'application/json' } })
-      .then(function (r) { if (!r.ok) throw new Error('load failed'); return r.json(); })
-      .then(function (data) {
-        renderSpaces(data.spaces);
-        renderSelect(data.spaces, keepValue);
-        renderSettings(data.settings);
-      })
-      .catch(function () {
-        $('cards').replaceChildren(el('p', 'muted', 'We could not load the spaces right now. Please refresh the page.'));
-      });
-  }
-
-  // Choosing a card pre-selects it in the form.
-  $('cards').addEventListener('click', function (e) {
-    var card = e.target.closest('a.card');
-    if (!card) return;
-    select.value = card.dataset.spaceId;
-    clearError('space_id');
-  });
-
-  // ---- form ---------------------------------------------------------------
-
-  function setError(name, msg) {
-    var p = $('err-' + name);
-    if (!p) return;
-    p.textContent = msg || '';
-    var wrap = p.closest('.field');
-    if (wrap) wrap.classList.toggle('has-error', !!msg);
-    var input = $(name);
-    if (input) input.setAttribute('aria-invalid', msg ? 'true' : 'false');
-  }
-  function clearError(name) { setError(name, ''); }
-
-  // Today as YYYY-MM-DD in the visitor's own time zone.
-  function today() {
-    var d = new Date();
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  }
-
-  function validate(v) {
-    var e = {};
-    if (!v.contact_name) e.contact_name = 'Enter your full name.';
-    if (!v.business_name) e.business_name = 'Enter your business name.';
-    if (!v.business_type) e.business_type = 'Enter your type of business.';
-    if (v.target_start_date && v.target_start_date < today()) e.target_start_date = 'Choose today or a later date.';
-    if (!v.space_id) e.space_id = 'Choose a space.';
-    if (!v.phone) e.phone = 'Enter a phone number.';
-    else if (!SkyPhone.isValid(v.phone)) e.phone = 'Enter a valid phone number.';
-    if (!v.email) e.email = 'Enter an email address.';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.email)) e.email = 'Enter a valid email address.';
-    return e;
-  }
-
-  function values() {
-    var out = {};
-    ['contact_name', 'business_name', 'business_type', 'phone', 'email', 'target_start_date', 'space_id', 'notes', 'website'].forEach(function (k) {
-      out[k] = (form.elements[k].value || '').trim();
+  function loadSite() {
+    return Promise.all([
+      fetch('/data/units.json', { headers: { Accept: 'application/json' } }),
+      fetch('/data/site.json', { headers: { Accept: 'application/json' } })
+    ]).then(function (responses) {
+      return Promise.all(responses.map(function (response) {
+        if (!response.ok) throw new Error('load failed');
+        return response.json();
+      }));
+    }).then(function (data) {
+      renderSpaces(data[0]);
+      renderSettings(data[1]);
+    }).catch(function () {
+      var box = $('cards');
+      if (box) box.replaceChildren(el('p', 'muted', 'We could not load the spaces right now. Please refresh the page.'));
     });
-    return out;
   }
 
-  SkyPhone.bind($('phone'));
+  window.Sky888Site.renderSpaces = renderSpaces;
+  window.Sky888Site.renderSettings = renderSettings;
+  window.Sky888Site.loadSite = loadSite;
 
-  function showErrors(errs) {
-    var firstBad = null;
-    FIELDS.forEach(function (k) {
-      setError(k, errs[k] || '');
-      if (errs[k] && !firstBad) firstBad = k;
-    });
-    if (firstBad) $(firstBad).focus();
-  }
-
-  FIELDS.forEach(function (k) {
-    $(k).addEventListener('input', function () { clearError(k); });
-    $(k).addEventListener('change', function () { clearError(k); });
-  });
-
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
-    var formError = $('form-error');
-    formError.textContent = '';
-    var v = values();
-    var errs = validate(v);
-    if (Object.keys(errs).length) {
-      showErrors(errs);
-      formError.textContent = 'Please fix the highlighted fields.';
-      return;
-    }
-    var btn = $('submit-btn');
-    btn.disabled = true;
-    btn.querySelector('span').textContent = 'Sending…';
-
-    fetch('/api/requests', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(Object.assign({}, v, { space_id: Number(v.space_id) }))
-    })
-      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { return { ok: r.ok, status: r.status, body: b }; }); })
-      .then(function (res) {
-        if (res.ok) {
-          $('ref').textContent = res.body.reference_no;
-          form.hidden = true;
-          var done = $('done');
-          done.hidden = false;
-          done.focus();
-          return;
-        }
-        if (res.body.fields) showErrors(res.body.fields);
-        formError.textContent = res.body.error || 'We could not send your request. Please try again.';
-        if (res.body.fields && res.body.fields.space_id) loadSite('');
-      })
-      .catch(function () {
-        formError.textContent = 'We could not reach the server. Check your connection and try again.';
-      })
-      .then(function () {
-        btn.disabled = false;
-        btn.querySelector('span').textContent = 'Submit request';
-      });
-  });
-
-  $('another').addEventListener('click', function () {
-    form.reset();
-    FIELDS.forEach(clearError);
-    $('form-error').textContent = '';
-    $('done').hidden = true;
-    form.hidden = false;
-    loadSite('');
-    $('business_name').focus();
-  });
-
-  $('target_start_date').min = today();
-  $('year').textContent = String(new Date().getFullYear());
-  loadSite('');
+  var year = $('year');
+  if (year) year.textContent = String(new Date().getFullYear());
+  loadSite();
 })();

@@ -4,6 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '..');
 
@@ -47,4 +48,20 @@ test('homepage is a static Facebook callout with no backend UI', () => {
 test('Vercel serves repository-root static assets', () => {
   const vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
   assert.equal(vercel.outputDirectory, '.');
+});
+
+test('static site helpers handle cards and Facebook placeholders', () => {
+  const context = { window: {} };
+  vm.runInNewContext(
+    fs.readFileSync(path.join(root, 'js', 'site.js'), 'utf8'),
+    context
+  );
+  const helpers = context.window.Sky888Site;
+  assert.equal(helpers.photoFor({ photos: [] }), '/img/building.png');
+  assert.equal(helpers.photoFor({ photos: ['/img/unit.png'] }), '/img/unit.png');
+  assert.equal(helpers.isAvailable({ status: 'available' }), true);
+  assert.equal(helpers.isAvailable({ status: 'reserved' }), false);
+  assert.equal(helpers.facebookConfigured(''), false);
+  assert.equal(helpers.facebookConfigured('LINK_TO_BE_ADDED'), false);
+  assert.equal(helpers.facebookConfigured('https://facebook.com/sky888'), true);
 });
