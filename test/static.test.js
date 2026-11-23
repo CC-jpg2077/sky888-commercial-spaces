@@ -65,3 +65,26 @@ test('static site helpers handle cards and Facebook placeholders', () => {
   assert.equal(helpers.facebookConfigured('LINK_TO_BE_ADDED'), false);
   assert.equal(helpers.facebookConfigured('https://facebook.com/sky888'), true);
 });
+
+test('backend and admin surfaces are removed', () => {
+  for (const stalePath of [
+    'server.js',
+    'src',
+    'public',
+    'test/app.test.js',
+    'scripts',
+    'package-lock.json'
+  ]) {
+    assert.equal(fs.existsSync(path.join(root, stalePath)), false, stalePath);
+  }
+});
+
+test('homepage preserves main sections and responsive unit grid', () => {
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  for (const id of ['hero', 'about', 'spaces', 'location', 'request']) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  const css = fs.readFileSync(path.join(root, 'css', 'site.css'), 'utf8');
+  assert.match(css, /\.cards\s*\{[^}]*grid-template-columns:\s*repeat\(3,/);
+  assert.match(css, /@media/);
+});
