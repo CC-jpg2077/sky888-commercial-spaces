@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "name": "Unit 1",
+    "floor": null,
+    "size_sqm": null,
+    "monthly_rate": null,
+    "description": "",
+    "status": "available",
+    "photos": []
+  },
+  {
+    "id": 2,
+    "name": "Unit 2",
+    "floor": null,
+    "size_sqm": null,
+    "monthly_rate": null,
+    "description": "",
+    "status": "available",
+    "photos": []
+  },
+  {
+    "id": 3,
+    "name": "Unit 3",
+    "floor": null,
+    "size_sqm": null,
+    "monthly_rate": null,
+    "description": "",
+    "status": "reserved",
+    "photos": []
+  }
+]
