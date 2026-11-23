@@ -29,6 +29,7 @@ body {
   color: var(--ink);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 img { max-width: 100%; height: auto; display: block; }
 a { color: inherit; }
@@ -234,6 +235,9 @@ a.card:hover .card__cta { color: var(--accent); }
 @media (max-width: 900px) {
   .wrap, .topbar__inner, .footer__inner { padding-left: 20px; padding-right: 20px; }
   .topbar__inner { flex-wrap: wrap; gap: 8px 16px; }
+  .brand { min-width: 0; }
+  .brand__text { min-width: 0; }
+  .brand__tag { white-space: nowrap; }
   .nav { order: 3; width: 100%; margin: 0; justify-content: flex-start; gap: 4px 28px; }
   .about__grid, .location__grid, .request__grid { grid-template-columns: minmax(0, 1fr); gap: 36px; }
   .features { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -245,12 +249,35 @@ a.card:hover .card__cta { color: var(--accent); }
 @media (max-width: 767px) {
   .js .shero { --shift: 180vw; }
   .js .shero__box { width: min(95vw, calc(300px + var(--p) * 650px)); height: min(85%, calc(400px + var(--p) * 200px)); }
+  .js .shero__title { padding: 0 20px; font-size: clamp(36px, 10vw, 56px); }
+  .js .shero__kicker, .js .shero__scroll { max-width: calc(100vw - 40px); overflow: hidden; text-overflow: ellipsis; }
 }
 @media (max-width: 600px) {
+  .wrap, .topbar__inner, .footer__inner { padding-left: 16px; padding-right: 16px; }
+  .topbar__inner { gap: 8px 12px; }
+  .brand__logo { width: 44px; height: 44px; }
+  .brand__tag { font-size: 10px; letter-spacing: .12em; }
+  .admin-link { min-height: 42px; padding: 0 12px; font-size: 13px; }
+  .nav { gap: 0; justify-content: space-between; }
+  .nav a { padding: 10px 8px; }
+  .shero { padding-top: 32px; }
+  .js .shero { min-height: 460px; }
+  .js .shero__box { width: calc(100vw - 32px); height: min(78%, 520px); }
+  .intro { padding-top: 64px; }
+  .intro__inner { gap: 22px; }
+  .intro__title { font-size: clamp(34px, 11vw, 52px); }
+  .lead { font-size: 17px; }
+  .hero__actions, .form-actions { width: 100%; }
+  .hero__actions .btn, .form-actions .btn { width: 100%; }
   .cards, .features, .info, .field-row { grid-template-columns: minmax(0, 1fr); }
-  .admin-link { padding: 0 16px; }
   .form-card { padding: 24px 20px 26px; }
   .stats > div { padding: 0 28px; }
+}
+@media (max-width: 360px) {
+  .brand__tag { display: none; }
+  .nav a { padding-left: 4px; padding-right: 4px; font-size: 13px; }
+  .admin-link { font-size: 12px; }
+  .stats > div { padding: 0 18px; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

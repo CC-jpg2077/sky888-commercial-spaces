@@ -76,6 +76,11 @@ test('the homepage and admin page are served', async () => {
     const r = await fetch(base + p);
     assert.equal(r.status, 200, p);
   }
+
+  const homepage = await fetch(base + '/');
+  const html = await homepage.text();
+  assert.doesNotMatch(html, /href="\/admin\/"/);
+  assert.doesNotMatch(html, /Admin View/i);
 });
 
 test('request form: validation errors name each field', async () => {
