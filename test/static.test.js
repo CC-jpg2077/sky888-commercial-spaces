@@ -64,6 +64,13 @@ test('static site helpers handle cards and Facebook placeholders', () => {
   assert.equal(helpers.facebookConfigured(''), false);
   assert.equal(helpers.facebookConfigured('LINK_TO_BE_ADDED'), false);
   assert.equal(helpers.facebookConfigured('https://facebook.com/sky888'), true);
+  var image = {
+    src: '/img/missing.png',
+    onerror: function () {}
+  };
+  helpers.fallbackImageHandler(image)();
+  assert.equal(image.src, '/img/building.png');
+  assert.equal(image.onerror, null);
 });
 
 test('backend and admin surfaces are removed', () => {

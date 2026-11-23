@@ -20,6 +20,13 @@
     return /^https:\/\/(www\.)?facebook\.com\//i.test(value);
   }
 
+  function fallbackImageHandler(image) {
+    return function () {
+      image.onerror = null;
+      image.src = '/img/building.png';
+    };
+  }
+
   function money(value) {
     return '₱' + Number(value).toLocaleString('en-PH', { maximumFractionDigits: 0 });
   }
@@ -38,6 +45,7 @@
     photoFor: photoFor,
     isAvailable: isAvailable,
     facebookConfigured: facebookConfigured,
+    fallbackImageHandler: fallbackImageHandler,
     metaLine: metaLine
   };
 
@@ -72,6 +80,7 @@
       image.src = photoFor(unit);
       image.alt = unit.name + ' at SKY888';
       image.loading = 'lazy';
+      image.onerror = fallbackImageHandler(image);
       card.appendChild(image);
 
       var body = el('div', 'card__body');
