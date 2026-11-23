@@ -36,3 +36,15 @@ test('package has no backend runtime', () => {
   assert.equal(pkg.scripts.start, undefined);
   assert.equal(pkg.dependencies, undefined);
 });
+
+test('homepage is a static Facebook callout with no backend UI', () => {
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  assert.doesNotMatch(html, /<form\b|\/api\/|\/admin\/|reference number|Submit request/i);
+  assert.match(html, /id="facebook-card"/);
+  assert.match(html, /id="facebook-link"/);
+});
+
+test('Vercel serves repository-root static assets', () => {
+  const vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+  assert.equal(vercel.outputDirectory, '.');
+});

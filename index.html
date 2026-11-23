@@ -155,85 +155,21 @@
       <div class="request__copy">
         <p class="eyebrow eyebrow--gold">Be a partner</p>
         <h2>Send a <em>Request</em></h2>
-        <p class="request__intro">Tell us about your business and the space you are interested in. The manager will review your request.</p>
+        <p class="request__intro">Connect with SKY888 on Facebook to ask about available commercial spaces and discuss your business needs.</p>
         <aside class="next" aria-labelledby="next-title">
           <h3 id="next-title">What happens next</h3>
           <ol>
-            <li>You submit the form and get a reference number.</li>
-            <li>The manager reviews your request.</li>
-            <li>You are contacted with the decision.</li>
+            <li>Open the SKY888 Facebook Page.</li>
+            <li>Send a message with the unit you are interested in.</li>
+            <li>Continue the conversation directly with the manager.</li>
           </ol>
         </aside>
       </div>
 
-      <div class="form-card" id="form-card">
-        <form id="request-form" novalidate>
-          <div class="field-row">
-            <div class="field">
-              <label for="contact_name">Full name</label>
-              <input id="contact_name" name="contact_name" type="text" maxlength="120" autocomplete="name" required aria-describedby="err-contact_name">
-              <p class="field__error" id="err-contact_name" role="alert"></p>
-            </div>
-            <div class="field">
-              <label for="business_name">Business name</label>
-              <input id="business_name" name="business_name" type="text" maxlength="120" autocomplete="organization" required aria-describedby="err-business_name">
-              <p class="field__error" id="err-business_name" role="alert"></p>
-            </div>
-          </div>
-          <div class="field-row">
-            <div class="field">
-              <label for="business_type">Business type</label>
-              <input id="business_type" name="business_type" type="text" maxlength="120" placeholder="e.g. Retail, food, services" required aria-describedby="err-business_type">
-              <p class="field__error" id="err-business_type" role="alert"></p>
-            </div>
-            <div class="field">
-              <label for="phone">Phone number</label>
-              <input id="phone" name="phone" type="tel" maxlength="13" autocomplete="tel" placeholder="09XX XXX XXXX" required aria-describedby="hint-phone err-phone">
-              <p class="field__error" id="err-phone" role="alert"></p>
-            </div>
-          </div>
-          <div class="field-row">
-            <div class="field">
-              <label for="email">Email</label>
-              <input id="email" name="email" type="email" maxlength="254" autocomplete="email" required aria-describedby="err-email">
-              <p class="field__error" id="err-email" role="alert"></p>
-            </div>
-            <div class="field">
-              <label for="target_start_date">Target start date</label>
-              <input id="target_start_date" name="target_start_date" type="date" aria-describedby="err-target_start_date">
-              <p class="field__error" id="err-target_start_date" role="alert"></p>
-            </div>
-          </div>
-          <div class="field">
-            <label for="space_id">Preferred space</label>
-            <select id="space_id" name="space_id" required aria-describedby="hint-space err-space_id">
-              <option value="">Select a space</option>
-            </select>
-            <p class="hint" id="hint-space">Only spaces marked Available are listed.</p>
-            <p class="field__error" id="err-space_id" role="alert"></p>
-          </div>
-          <div class="field">
-            <label for="notes">Message (optional)</label>
-            <textarea id="notes" name="notes" rows="4" maxlength="1000"></textarea>
-          </div>
-          <div class="hp" aria-hidden="true">
-            <label for="website">Leave this field empty</label>
-            <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
-          </div>
-          <p class="form-error" id="form-error" role="alert"></p>
-          <div class="form-actions">
-            <button class="btn btn--accent" type="submit" id="submit-btn"><span>Submit request</span></button>
-            <a class="back-link" href="#spaces">Back to spaces</a>
-          </div>
-        </form>
-
-        <div class="done" id="done" hidden tabindex="-1">
-          <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.500l3 3 5-6"/></svg>
-          <h3>Request received</h3>
-          <p>Thank you. The manager will review your request and contact you with a decision.</p>
-          <p class="done__ref">Your reference number<strong id="ref">SKY-0000</strong></p>
-          <button class="btn btn--outline-dark" type="button" id="another">Send another request</button>
-        </div>
+      <div class="facebook-card" id="facebook-card">
+        <h3>Request through Facebook</h3>
+        <p id="facebook-status">The Facebook Page link will be added when it is available.</p>
+        <a class="btn btn--accent" id="facebook-link" href="#" aria-disabled="true">Open Facebook Page</a>
       </div>
     </div>
   </section>
@@ -249,7 +185,6 @@
   </div>
 </footer>
 
-<script src="/js/phone.js"></script>
 <script src="/js/site.js"></script>
 <script src="/js/rotate-words.js"></script>
 </body>

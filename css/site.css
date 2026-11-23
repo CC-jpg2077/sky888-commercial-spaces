@@ -184,6 +184,10 @@ a.card:hover .card__cta { color: var(--accent); }
 .request h2 { font-size: clamp(36px, 4.6vw, 52px); font-weight: 600; line-height: 1.1; }
 .request h2 em { color: var(--gold); }
 .request__intro { color: #d3ddec; font-size: 16px; max-width: 28em; }
+.facebook-card { background: #fff; color: var(--ink); padding: 34px 36px; border-radius: 6px; display: flex; flex-direction: column; gap: 16px; align-items: flex-start; }
+.facebook-card h3 { font-size: 24px; }
+.facebook-card p { color: var(--ink-soft); }
+.facebook-card .btn[aria-disabled="true"] { pointer-events: none; opacity: .55; }
 .next { margin-top: 18px; background: var(--sand); color: var(--ink); padding: 28px 30px 30px; border-radius: 6px; max-width: 420px; }
 .next h3 { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 20px; }
 .next ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; counter-reset: step; }
