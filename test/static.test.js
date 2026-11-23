@@ -9,17 +9,17 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 
 test('static site data is valid', () => {
-  const site = JSON.parse(fs.readFileSync(path.join(root, 'data', 'site.json'), 'utf8'));
+  const site = JSON.parse(fs.readFileSync(path.join(root, 'public', 'data', 'site.json'), 'utf8'));
   assert.equal(site.address, 'Don Rufino Alonzo Sr. St., Brgy. Poblacion 5, Cotabato City 9600');
   assert.equal(site.directionsUrl, '');
   assert.equal(site.contactPhone, '');
   assert.equal(site.contactEmail, '');
   assert.equal(site.officeHours, '');
-  assert.equal(site.facebookUrl, '');
+  assert.match(site.facebookUrl, /^https:\/\/(www\.)?facebook\.com\//);
 });
 
 test('seed unit data is valid and uniquely identified', () => {
-  const units = JSON.parse(fs.readFileSync(path.join(root, 'data', 'units.json'), 'utf8'));
+  const units = JSON.parse(fs.readFileSync(path.join(root, 'public', 'data', 'units.json'), 'utf8'));
   assert.deepEqual(
     units.map(({ name, status }) => [name, status]),
     [['Unit 1', 'available'], ['Unit 2', 'available'], ['Unit 3', 'reserved']]
@@ -39,7 +39,7 @@ test('package has no backend runtime', () => {
 });
 
 test('homepage is a static Facebook callout with no backend UI', () => {
-  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
   assert.doesNotMatch(html, /<form\b|\/api\/|\/admin\/|reference number|Submit request/i);
   assert.match(html, /id="facebook-card"/);
   assert.match(html, /id="facebook-link"/);
@@ -47,13 +47,13 @@ test('homepage is a static Facebook callout with no backend UI', () => {
 
 test('Vercel serves repository-root static assets', () => {
   const vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
-  assert.equal(vercel.outputDirectory, '.');
+  assert.equal(vercel.outputDirectory, 'public');
 });
 
 test('static site helpers handle cards and Facebook placeholders', () => {
   const context = { window: {} };
   vm.runInNewContext(
-    fs.readFileSync(path.join(root, 'js', 'site.js'), 'utf8'),
+    fs.readFileSync(path.join(root, 'public', 'js', 'site.js'), 'utf8'),
     context
   );
   const helpers = context.window.Sky888Site;
@@ -77,7 +77,6 @@ test('backend and admin surfaces are removed', () => {
   for (const stalePath of [
     'server.js',
     'src',
-    'public',
     'test/app.test.js',
     'scripts',
     'package-lock.json'
@@ -87,11 +86,11 @@ test('backend and admin surfaces are removed', () => {
 });
 
 test('homepage preserves main sections and responsive unit grid', () => {
-  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
   for (const id of ['hero', 'about', 'spaces', 'location', 'request']) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
-  const css = fs.readFileSync(path.join(root, 'css', 'site.css'), 'utf8');
+  const css = fs.readFileSync(path.join(root, 'public', 'css', 'site.css'), 'utf8');
   assert.match(css, /\.cards\s*\{[^}]*grid-template-columns:\s*repeat\(3,/);
   assert.match(css, /@media/);
 });
