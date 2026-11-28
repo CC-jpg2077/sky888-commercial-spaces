@@ -1,8 +1,4 @@
-node_modules/
-data/*.db
-data/*.db-shm
-data/*.db-wal
+node_modules
 .env
+data/
 .DS_Store
-Thumbs.db
-docs/superpowers/

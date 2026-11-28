@@ -2,6 +2,7 @@
 
 const express = require('express');
 const { getSettings } = require('../db');
+const { ah, toId } = require('../async');
 const { field, isEmail, normalizePhone, createLimiter, httpError } = require('../util');
 
 // A real calendar date in YYYY-MM-DD form that is not before today
@@ -23,16 +24,17 @@ module.exports = function publicRoutes(db) {
   const submitLimiter = createLimiter({ max: 5, windowMs: 60 * 60 * 1000 });
 
   // Everything the public page needs in one call.
-  router.get('/site', (req, res) => {
-    const s = getSettings(db);
+  router.get('/site', ah(async (req, res) => {
+    const s = await getSettings(db);
     const showRates = s.show_rates === '1';
-    const photos = db.prepare('SELECT id, space_id FROM space_photos ORDER BY id').all();
+    const photos = await db.all('SELECT id, space_id FROM space_photos ORDER BY id');
     const byspace = new Map();
     for (const p of photos) {
       if (!byspace.has(p.space_id)) byspace.set(p.space_id, []);
       byspace.get(p.space_id).push(p.id);
     }
-    const spaces = db.prepare('SELECT * FROM spaces ORDER BY sort_order, id').all().map((sp) => ({
+    const rows = await db.all('SELECT * FROM spaces ORDER BY sort_order, id');
+    const spaces = rows.map((sp) => ({
       id: sp.id,
       name: sp.name,
       floor: sp.floor,
@@ -53,17 +55,18 @@ module.exports = function publicRoutes(db) {
       },
       spaces
     });
-  });
+  }));
 
-  router.get('/photos/:id', (req, res) => {
-    const row = db.prepare('SELECT mime, data FROM space_photos WHERE id = ?').get(Number(req.params.id));
+  router.get('/photos/:id', ah(async (req, res) => {
+    const id = toId(req.params.id);
+    const row = id ? await db.one('SELECT mime, data FROM space_photos WHERE id = $1', [id]) : null;
     if (!row || !PHOTO_MIMES.has(row.mime)) return res.status(404).json({ error: 'Not found.' });
     res.set('Content-Type', row.mime);
     res.set('Cache-Control', 'public, max-age=3600');
     res.send(row.data);
-  });
+  }));
 
-  router.post('/requests', (req, res) => {
+  router.post('/requests', ah(async (req, res) => {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
 
     const limits = [burstLimiter, submitLimiter].map((limiter) => limiter.check(req.ip));
@@ -103,10 +106,8 @@ module.exports = function publicRoutes(db) {
     if (!fields.phone && !normalizedPhone) fields.phone = 'Enter a valid phone number.';
     if (!fields.email && !isEmail(email.v)) fields.email = 'Enter a valid email address.';
 
-    const spaceId = Number(body.space_id);
-    const space = Number.isInteger(spaceId)
-      ? db.prepare('SELECT id, name, status FROM spaces WHERE id = ?').get(spaceId)
-      : null;
+    const spaceId = toId(body.space_id);
+    const space = spaceId ? await db.one('SELECT id, name, status FROM spaces WHERE id = $1', [spaceId]) : null;
     if (!space) fields.space_id = 'Choose a space.';
     else if (space.status !== 'available') fields.space_id = 'That space is no longer open for requests.';
 
@@ -114,22 +115,21 @@ module.exports = function publicRoutes(db) {
       throw httpError(422, 'Please fix the highlighted fields.', { fields });
     }
 
-    const insert = db.transaction(() => {
-      const info = db.prepare(
+    const reference_no = await db.tx(async (tx) => {
+      const row = await tx.one(
         `INSERT INTO requests (space_id, space_name, business_name, business_type, business_description,
                                target_start_date, contact_name, phone, email, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(space.id, space.name, biz.v, type.v, desc.v, start.v || null, contact.v, normalizedPhone, email.v, notes.v);
-      const id = Number(info.lastInsertRowid);
-      const ref = `SKY-${1000 + id}`;
-      db.prepare('UPDATE requests SET reference_no = ? WHERE id = ?').run(ref, id);
-      db.prepare('INSERT INTO request_events (request_id, action) VALUES (?, ?)').run(id, 'Request submitted');
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+        [space.id, space.name, biz.v, type.v, desc.v, start.v || null, contact.v, normalizedPhone, email.v, notes.v]
+      );
+      const ref = `SKY-${1000 + row.id}`;
+      await tx.query('UPDATE requests SET reference_no = $1 WHERE id = $2', [ref, row.id]);
+      await tx.query('INSERT INTO request_events (request_id, action) VALUES ($1, $2)', [row.id, 'Request submitted']);
       return ref;
     });
 
-    const reference_no = insert();
     res.status(201).json({ reference_no });
-  });
+  }));
 
   return router;
 };

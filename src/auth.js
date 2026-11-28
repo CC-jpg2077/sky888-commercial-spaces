@@ -48,16 +48,18 @@ function parseCookies(header) {
   return out;
 }
 
-function createSession(db, adminId) {
+async function createSession(db, adminId) {
   const token = crypto.randomBytes(32).toString('hex');
-  db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(Date.now());
-  db.prepare('INSERT INTO sessions (token_hash, admin_id, expires_at) VALUES (?, ?, ?)')
-    .run(sha256(token), adminId, Date.now() + SESSION_MS);
+  await db.query('DELETE FROM sessions WHERE expires_at < $1', [Date.now()]);
+  await db.query(
+    'INSERT INTO sessions (token_hash, admin_id, expires_at) VALUES ($1, $2, $3)',
+    [sha256(token), adminId, Date.now() + SESSION_MS]
+  );
   return token;
 }
 
-function destroySession(db, token) {
-  if (token) db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha256(token));
+async function destroySession(db, token) {
+  if (token) await db.query('DELETE FROM sessions WHERE token_hash = $1', [sha256(token)]);
 }
 
 function setSessionCookie(req, res, token) {
@@ -74,16 +76,17 @@ function clearSessionCookie(res) {
   res.clearCookie(COOKIE_NAME, { path: '/' });
 }
 
-function findAdminByToken(db, token) {
+async function findAdminByToken(db, token) {
   if (!token) return null;
-  const row = db.prepare(
+  const row = await db.one(
     `SELECT a.id, a.email, a.name, a.must_change_password, s.expires_at
        FROM sessions s JOIN admins a ON a.id = s.admin_id
-      WHERE s.token_hash = ?`
-  ).get(sha256(token));
+      WHERE s.token_hash = $1`,
+    [sha256(token)]
+  );
   if (!row) return null;
-  if (row.expires_at < Date.now()) {
-    destroySession(db, token);
+  if (Number(row.expires_at) < Date.now()) {
+    await destroySession(db, token);
     return null;
   }
   return row;
@@ -92,35 +95,40 @@ function findAdminByToken(db, token) {
 // Express middleware. While an admin still has the temporary password, only
 // routes that opt in with allowMustChange can be used.
 function requireAdmin(db, { allowMustChange = false } = {}) {
-  return (req, res, next) => {
-    const token = parseCookies(req.headers.cookie)[COOKIE_NAME];
-    const admin = findAdminByToken(db, token);
-    if (!admin) return res.status(401).json({ error: 'Please log in.', code: 'login_required' });
-    if (admin.must_change_password && !allowMustChange) {
-      return res.status(403).json({ error: 'Set a new password before continuing.', code: 'must_change_password' });
+  return async (req, res, next) => {
+    try {
+      const token = parseCookies(req.headers.cookie)[COOKIE_NAME];
+      const admin = await findAdminByToken(db, token);
+      if (!admin) return res.status(401).json({ error: 'Please log in.', code: 'login_required' });
+      if (admin.must_change_password && !allowMustChange) {
+        return res.status(403).json({ error: 'Set a new password before continuing.', code: 'must_change_password' });
+      }
+      req.admin = admin;
+      req.sessionToken = token;
+      next();
+    } catch (err) {
+      next(err);
     }
-    req.admin = admin;
-    req.sessionToken = token;
-    next();
   };
 }
 
-function createAdmin(db, { email, name, password, mustChange = true }) {
-  const info = db.prepare(
-    'INSERT INTO admins (email, name, password_hash, must_change_password) VALUES (?, ?, ?, ?)'
-  ).run(email, name, hashPassword(password), mustChange ? 1 : 0);
-  return info.lastInsertRowid;
+async function createAdmin(db, { email, name, password, mustChange = true }) {
+  const row = await db.one(
+    'INSERT INTO admins (email, name, password_hash, must_change_password) VALUES ($1, $2, $3, $4) RETURNING id',
+    [email, name, hashPassword(password), !!mustChange]
+  );
+  return row.id;
 }
 
 // First run only: make sure at least one admin exists.
-function bootstrapAdmin(db, log = console.log) {
-  const { n } = db.prepare('SELECT COUNT(*) AS n FROM admins').get();
+async function bootstrapAdmin(db, log = console.log) {
+  const { n } = await db.one('SELECT COUNT(*) AS n FROM admins');
   if (n > 0) return null;
   const email = (process.env.ADMIN_EMAIL || 'admin@sky888.local').trim();
   let password = process.env.ADMIN_PASSWORD;
   const generated = !password;
   if (generated) password = crypto.randomBytes(9).toString('base64url') + '7';
-  createAdmin(db, { email, name: 'Administrator', password, mustChange: true });
+  await createAdmin(db, { email, name: 'Administrator', password, mustChange: true });
   log('------------------------------------------------------------');
   log(' First run: admin account created.');
   log(`   Email:    ${email}`);
@@ -137,6 +145,7 @@ module.exports = {
   DUMMY_HASH,
   passwordProblem,
   parseCookies,
+  sha256,
   createSession,
   destroySession,
   setSessionCookie,
