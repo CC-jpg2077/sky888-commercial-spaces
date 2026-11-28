@@ -45,7 +45,7 @@ em.accent-light { color: var(--accent-light); }
 /* Top bar */
 .topbar { background: var(--bar); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 10; }
 .topbar__inner {
-  max-width: 1160px; margin: 0 auto; padding: 8px 32px;
+  position: relative; max-width: 1160px; margin: 0 auto; padding: 8px 32px;
   display: flex; align-items: center; justify-content: space-between; gap: 24px;
 }
 .brand { display: flex; align-items: center; gap: 14px; text-decoration: none; }
@@ -53,7 +53,7 @@ em.accent-light { color: var(--accent-light); }
 .brand__text { display: flex; flex-direction: column; line-height: 1.2; }
 .brand__name { font-weight: 600; font-size: 17px; }
 .brand__tag { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
-.nav { display: flex; gap: 8px 36px; margin-left: auto; margin-right: auto; }
+.nav { position: absolute; left: 50%; transform: translateX(-50%); display: flex; gap: 8px 36px; }
 .nav a { text-decoration: none; font-size: 14px; font-weight: 400; padding: 12px 0; }
 .nav a:hover { color: var(--accent); }
 
@@ -238,7 +238,7 @@ a.card:hover .card__cta { color: var(--accent); }
   .brand { min-width: 0; }
   .brand__text { min-width: 0; }
   .brand__tag { white-space: nowrap; }
-  .nav { order: 3; width: 100%; margin: 0; justify-content: flex-start; gap: 4px 28px; }
+  .nav { position: static; transform: none; order: 3; width: 100%; justify-content: center; gap: 4px 28px; }
   .about__grid, .location__grid, .request__grid { grid-template-columns: minmax(0, 1fr); gap: 36px; }
   .features { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -258,7 +258,7 @@ a.card:hover .card__cta { color: var(--accent); }
   .brand__logo { width: 44px; height: 44px; }
   .brand__tag { font-size: 10px; letter-spacing: .12em; }
   .admin-link { min-height: 42px; padding: 0 12px; font-size: 13px; }
-  .nav { gap: 0; justify-content: space-between; }
+  .nav { gap: 0; justify-content: center; }
   .nav a { padding: 10px 8px; }
   .shero { padding-top: 32px; }
   .js .shero { min-height: 460px; }
